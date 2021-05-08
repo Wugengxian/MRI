@@ -23,7 +23,7 @@ class Trainer(object):
         self.saver.save_experiment_config()
 
         # Define Dataloader
-        self.train_loader = DataLoader(MRI_dataset(), batch_size=args.batch_size, shuffle=True, drop_last=True)
+        self.train_loader = DataLoader(MRI_dataset(), batch_size=args.batch_size, shuffle=True, drop_last=False)
 
         # Define network
         model = SEInception3(2, aux_logits=False)
@@ -46,10 +46,7 @@ class Trainer(object):
                 raise RuntimeError("=> no checkpoint found at '{}'".format(args.resume))
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
-            if args.cuda:
-                self.model.module.load_state_dict(checkpoint['state_dict'])
-            else:
-                self.model.load_state_dict(checkpoint['state_dict'])
+            self.model.load_state_dict(checkpoint['state_dict'])
             if not args.ft:
                 self.optimizer.load_state_dict(checkpoint['optimizer'])
             self.best_pred = checkpoint['best_pred']
@@ -57,12 +54,13 @@ class Trainer(object):
                   .format(args.resume, checkpoint['epoch']))
 
         # Define lr scheduler
-        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.8, last_epoch=args.start_epoch)
+        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.95, last_epoch=args.start_epoch)
 
     def training(self, epoch):
         train_loss = 0.0
         self.model.train()
         tbar = tqdm(self.train_loader)
+        train_correct = 0
         print('\n=>Epoches %i, learning rate = %.4f' % (epoch, self.scheduler.get_last_lr()[-1]))
         for i, sample in enumerate(tbar):
             md, fa, mask, target = sample['md'], sample['fa'], sample['mask'], sample['label']
@@ -78,19 +76,21 @@ class Trainer(object):
             loss = self.criterion(output, target)
             loss.backward()
             self.optimizer.step()
+            prediction = torch.max(output, 1)[1]
+            train_correct = train_correct + (prediction == target).sum().item()
             train_loss += loss.item()
             tbar.set_description('Train loss: %.3f' % (train_loss / (i + 1)))
         self.scheduler.step()
 
         print('[Epoch: %d, numImages: %5d]' % (epoch, i * self.args.batch_size + image.data.shape[0]))
-        print('Loss: %.3f' % train_loss)
+        print('Loss: %.3f, acc: %d' % (train_loss, train_correct))
 
         if self.args.no_val:
             # save checkpoint every epoch
             is_best = False
             self.saver.save_checkpoint({
                 'epoch': epoch + 1,
-                'state_dict': self.model.module.state_dict(),
+                'state_dict': self.model.state_dict(),
                 'optimizer': self.optimizer.state_dict(),
                 'best_pred': self.best_pred,
             }, is_best)
