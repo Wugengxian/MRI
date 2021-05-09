@@ -54,7 +54,11 @@ class Trainer(object):
                   .format(args.resume, checkpoint['epoch']))
 
         # Define lr scheduler
-        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.95, last_epoch=args.start_epoch)
+        if args.lr_scheduler == 'exp':
+            self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=args.lr_scheduler_gamma, last_epoch=args.start_epoch)
+        else:
+            self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=args.lr_scheduler_step, gamma=args.lr_scheduler_gamma,
+                                                                    last_epoch=args.start_epoch)
 
     def training(self, epoch):
         train_loss = 0.0
@@ -118,9 +122,13 @@ def main():
     # optimizer params
     parser.add_argument('--lr', type=float, default=None, metavar='LR',
                         help='learning rate (default: auto)')
-    parser.add_argument('--lr-scheduler', type=str, default='poly',
-                        choices=['poly', 'step', 'cos'],
-                        help='lr scheduler mode: (default: poly)')
+    parser.add_argument('--lr-scheduler', type=str, default='exp',
+                        choices=['step', 'exp'],
+                        help='lr scheduler mode: (default: exp)')
+    parser.add_argument('--lr-scheduler-gamma', type=float, default=0.1,
+                        help='the gamma of lr-scheduler')
+    parser.add_argument('--lr-scheduler-step', type=str, default=None,
+                        help='the mutistep')
     parser.add_argument('--momentum', type=float, default=0.9,
                         metavar='M', help='momentum (default: 0.9)')
     parser.add_argument('--weight-decay', type=float, default=5e-4,
@@ -150,6 +158,8 @@ def main():
             args.gpu_ids = [int(s) for s in args.gpu_ids.split(',')]
         except ValueError:
             raise ValueError('Argument --gpu_ids must be a comma-separated list of integers only')
+    if args.lr_scheduler_step is not None:
+        args.lr_scheduler_step = [int(s) for s in args.lr_scheduler_step.split(',')]
     if args.batch_size is None:
         args.batch_size = 8 * len(args.gpu_ids)
     if args.test_batch_size is None:
