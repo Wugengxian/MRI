@@ -1,2 +1,3 @@
 dataloaders/*.npy
 run
+*.xml

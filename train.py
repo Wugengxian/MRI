@@ -13,6 +13,7 @@ from Model.SELayer import se_inception_v3, SEInception3
 from Saver.saver import Saver
 from dataloaders.MRI_dataset import MRI_dataset
 from Model.ResidualAttention.residual_attention_network import ResidualAttentionModel_92_32input_update as ResidualAttentionModel
+from Model.ResNext.ResNeXt import ResNeXt
 
 
 
@@ -30,6 +31,8 @@ class Trainer(object):
         # Define network
         if args.model == 'res':
             model = ResidualAttentionModel()
+        elif args.model == 'resnext':
+            model = ResNeXt(cardinality=8,depth=29,nlabels=2,base_width=64)
         else:
             model = SEInception3(2, aux_logits=False)
 
@@ -107,8 +110,8 @@ class Trainer(object):
 
 def main():
     parser = argparse.ArgumentParser(description="PyTorch MRI Training")
-    parser.add_argument('--model', type=str, default='vgg16',
-                        choices=['vgg16','res'],
+    parser.add_argument('--model', type=str, default='resnext',
+                        choices=['vgg16','res','resnext'],
                         help='model use')
     parser.add_argument('--loss-type', type=str, default='ce',
                         choices=['ce', 'focal'],

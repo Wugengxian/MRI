@@ -12,10 +12,10 @@ from torch.utils.data import DataLoader
 from Model.SELayer import se_inception_v3, SEInception3
 from Saver.saver import Saver
 from dataloaders.MRI_dataset import MRI_dataset
-from Model.ResidualAttention.residual_attention_network import ResidualAttentionModel_92_32input_update as ResidualAttentionModel
+from Model.ResNext.ResNeXt import ResNeXt
 
-device_ids = ["1,2,3,6"]
-os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(device_ids)
+# device_ids = ["7"]
+# os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(device_ids)
 class Trainer(object):
     def __init__(self, args):
         self.args = args
@@ -29,7 +29,7 @@ class Trainer(object):
         self.train_loader = DataLoader(MRI_dataset(), batch_size=args.batch_size, shuffle=True, drop_last=True)
 
         # Define network
-        self.model = ResidualAttentionModel()
+        self.model = ResNeXt(cardinality=8,depth=29,nlabels=2,base_width=64)
         if args.cuda:
             self.model = nn.DataParallel(self.model)
             self.model = self.model.cuda()
@@ -158,7 +158,7 @@ def main():
         except ValueError:
             raise ValueError('Argument --gpu_ids must be a comma-separated list of integers only')
     if args.batch_size is None:
-        args.batch_size = 2
+        args.batch_size = 4
     if args.test_batch_size is None:
         args.test_batch_size = args.batch_size
     if args.lr is None:
