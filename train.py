@@ -53,15 +53,17 @@ class Trainer(object):
             if not os.path.isfile(args.resume):
                 raise RuntimeError("=> no checkpoint found at '{}'".format(args.resume))
             checkpoint = torch.load(args.resume)
-            args.start_epoch = checkpoint['epoch']
+            if args.start_epoch is None:
+                args.start_epoch = checkpoint['epoch']
             self.model.load_state_dict(checkpoint['state_dict'])
-            if not args.ft:
-                self.optimizer.load_state_dict(checkpoint['optimizer'])
+            self.optimizer.load_state_dict(checkpoint['optimizer'])
             self.best_pred = checkpoint['best_pred']
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
 
         # Define lr scheduler
+        if args.start_epoch is None:
+            args.start_epoch = 0
         if args.lr_scheduler == 'exp':
             self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=args.lr_scheduler_gamma, last_epoch=args.start_epoch)
         else:
@@ -110,8 +112,8 @@ class Trainer(object):
 
 def main():
     parser = argparse.ArgumentParser(description="PyTorch MRI Training")
-    parser.add_argument('--model', type=str, default='resnext',
-                        choices=['vgg16','res','resnext'],
+    parser.add_argument('--model', type=str, default='SENet',
+                        choices=['SENet','res','resnext'],
                         help='model use')
     parser.add_argument('--loss-type', type=str, default='ce',
                         choices=['ce', 'focal'],
@@ -119,7 +121,7 @@ def main():
     # training hyper params
     parser.add_argument('--epochs', type=int, default=10, metavar='N',
                         help='number of epochs to train (default: auto)')
-    parser.add_argument('--start_epoch', type=int, default=0,
+    parser.add_argument('--start_epoch', type=int, default=None,
                         metavar='N', help='start epochs (default:0)')
     parser.add_argument('--batch-size', type=int, default=None,
                         metavar='N', help='input batch size for \
