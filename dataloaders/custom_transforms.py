@@ -41,14 +41,26 @@ class RamdomMask(object):
 
     def __call__(self, sample):
         
-        md = sample['md']
-        fa = sample['fa']
-        mask = sample['mask']
+        md = np.array(sample['md'])
+        fa = np.array(sample['fa'])
+        mask = np.array(sample['mask'])
         label = sample['label']
-        if random.randint(0, 1) == 0:
+        prob1 = random.randint(0, 1)
+        prob2 = random.randint(0, 1)
+        if prob1 == 0:
             md = md * mask
-        if random.randint(0, 1) == 0:
+        if prob2 == 0:
             fa = fa * mask
+        if prob1 == 1 and prob2 == 1:
+            ones = np.where(mask == 0)
+            positions = []
+            for i in ones :
+                positions.append((-min(i), mask.shape[0] - 1 - max(i)))
+            for i in range(0, len(positions)) : 
+                shift = random.randint(positions[i][0], positions[i][1])
+                md = np.roll(md, shift, i)
+                fa = np.roll(fa, shift, i)
+                mask = np.roll(mask, shift, i)
         return {'md': md, 'fa': fa, 'mask': mask, "label": label}
 
 
@@ -68,3 +80,4 @@ class ToTensor(object):
         mask = torch.from_numpy(mask).float()
         label = torch.Tensor([label]).long()
         return {'md': md, 'fa': fa, 'mask': mask, "label": label}
+        
