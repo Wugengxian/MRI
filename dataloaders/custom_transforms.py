@@ -37,20 +37,6 @@ class RamdomFlip(object):
         mask = np.flip(mask, angle)
         return {'md': md, 'fa': fa, 'mask': mask, "label": label}
     
-class RamdomFlip(object):
-
-    def __call__(self, sample):
-        
-        md = sample['md']
-        fa = sample['fa']
-        mask = sample['mask']
-        label = sample['label']
-        angle = random.randint(0, 1)
-        md = np.flip(md, angle)
-        fa = np.flip(fa, angle)
-        mask = np.flip(mask, angle)
-        return {'md': md, 'fa': fa, 'mask': mask, "label": label}
-    
 class RamdomMask(object):
 
     def __call__(self, sample):
