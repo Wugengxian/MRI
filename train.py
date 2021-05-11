@@ -28,19 +28,30 @@ class Trainer(object):
         # Define Dataloader
         self.train_loader = DataLoader(MRI_dataset(), batch_size=args.batch_size, shuffle=True, drop_last=False)
 
+        # Define channel num
+        if args.data == 0:
+            inchannel = 3
+        elif 0 < args.data < 3:
+            inchannel = 1
+        else:
+            inchannel = 2
+         
         # Define network
         if args.model == 'res':
             model = ResidualAttentionModel()
         elif args.model == 'resnext':
             model = ResNeXt(cardinality=8,depth=29,nlabels=2,base_width=64)
         else:
-            model = SEInception3(2, aux_logits=False)
+            model = SEInception3(2, inchanel=inchannel, aux_logits=False)
 
         optimizer = torch.optim.SGD([{"params":model.parameters(),"initial_lr":args.lr}], lr=args.lr, momentum=args.momentum,
                                     weight_decay=args.weight_decay)
         # Define Criterion
         # whether to use class balanced weights
-        self.criterion = nn.CrossEntropyLoss()
+        if args.loss_type == 'ce':
+            self.criterion = nn.CrossEntropyLoss()
+        else:
+            self.criterion = nn.BCEWithLogitsLoss()
         self.model, self.optimizer = model, optimizer
 
         # Using cuda
@@ -56,7 +67,7 @@ class Trainer(object):
             if args.start_epoch is None:
                 args.start_epoch = checkpoint['epoch']
             self.model.load_state_dict(checkpoint['state_dict'])
-            self.optimizer.load_state_dict(checkpoint['optimizer'])
+#             self.optimizer.load_state_dict(checkpoint['optimizer'])
             self.best_pred = checkpoint['best_pred']
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
@@ -81,7 +92,18 @@ class Trainer(object):
             md = torch.unsqueeze(md, 1)
             fa = torch.unsqueeze(fa, 1)
             mask = torch.unsqueeze(mask, 1)
-            image = torch.cat([md, fa, mask], 1)
+            if self.args.data == 0:
+                image = torch.cat([md, fa, mask], 1)
+            elif self.args.data == 1:
+                image = md
+            elif self.args.data == 2:
+                image = fa
+            elif self.args.data == 3:
+                image = torch.cat([md, fa], 1)
+            elif self.args.data == 4:
+                image = torch.cat([md, mask], 1)
+            elif self.args.data == 5:
+                image = torch.cat([fa, mask], 1)
             target = torch.squeeze(target)
             if self.args.cuda:
                 image, target = image.cuda(self.args.gpu_ids[0]), target.cuda(self.args.gpu_ids[0])
@@ -116,8 +138,10 @@ def main():
                         choices=['SENet','res','resnext'],
                         help='model use')
     parser.add_argument('--loss-type', type=str, default='ce',
-                        choices=['ce', 'focal'],
+                        choices=['ce', 'focal', 'bce'],
                         help='loss func type (default: ce)')
+    parser.add_argument('--data', type=int, default=0, metavar='N',
+                        help='number of data type')
     # training hyper params
     parser.add_argument('--epochs', type=int, default=10, metavar='N',
                         help='number of epochs to train (default: auto)')
